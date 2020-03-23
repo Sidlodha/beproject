@@ -1,11 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Mar 20 19:04:50 2020
-
-@author: Parth
-"""
-
-#########################run from here#####################################
 
 import torchvision
 import torch
@@ -25,9 +17,11 @@ from torch.utils.data.sampler import SubsetRandomSampler
 import cv2
 import sys
 
-data_path = 'E:\\BE-PROJECT\\crime16-test'
+
+data_path = 'D:\\Download\\temp3-16'
 classes = os.listdir(data_path)
 decoder = {}
+
 for i in range(len(classes)):
     decoder[classes[i]] = i
 encoder = {}
@@ -35,13 +29,15 @@ for i in range(len(classes)):
     encoder[i] = classes[i]
     
 id = list()
-path = 'E:\\BE-PROJECT\\crime16-test'
+path = 'D:\\Download\\temp3-16'
 for i in os.listdir(path):
   p1 = os.path.join(path,i)
   for j in os.listdir(p1):
     p2 = os.path.join(p1,j)
-    id.append((i,p2)) 
-   
+    id.append((p2)) 
+    
+    
+
 class video_dataset(Dataset):
     def __init__(self,frame_list,sequence_length = 16,transform = None):
         self.frame_list = frame_list
@@ -50,7 +46,7 @@ class video_dataset(Dataset):
     def __len__(self):
         return len(self.frame_list)
     def __getitem__(self,idx):
-        label,path = self.frame_list[idx]
+        path = self.frame_list[idx]
         img = cv2.imread(path)
         seq_img = list()
         for i in range(16):
@@ -60,7 +56,7 @@ class video_dataset(Dataset):
           seq_img.append(img1)
         seq_image = torch.stack(seq_img)
         seq_image = seq_image.reshape(3,16,im_size,im_size)
-        return seq_image,decoder[label]
+        return seq_image
 
 
 im_size = 128
@@ -76,11 +72,9 @@ train_transforms = transforms.Compose([
                                         transforms.ToTensor(),
                                         transforms.Normalize(mean,std)])
 
-train_data = video_dataset(id,sequence_length = 16,transform = train_transforms)
+train_data = video_dataset(id,sequence_length = 16,transform = train_transforms)    
 train_loader = DataLoader(train_data,batch_size = 8,num_workers = 0 ,shuffle = True)
 dataloaders = {'train':train_loader}
-
-
 
 
 from model import resnet50
@@ -98,52 +92,15 @@ from torch.autograd import Variable
 iteration = 0
 acc_all = list()
 loss_all = list()
-    
-for epoch in range(num_epochs):
-    print('')
-    print(f"--- Epoch {epoch} ---")
-    phase1 = dataloaders.keys()
-    for phase in phase1:
+        
+        
+phase1 = dataloaders.keys()
+for phase in phase1:
         print('')
         print(f"--- Phase {phase} ---")
         epoch_metrics = {"loss": [], "acc": []}
-        for batch_i, (X, y) in enumerate(dataloaders[phase]):
+        for X, y in enumerate(dataloaders[phase]):
             #iteration = iteration+1
-            image_sequences = Variable(X.to(device), requires_grad=True)
-            labels = Variable(y.to(device), requires_grad=False)
-            optimizer.zero_grad()
-            #model.lstm.reset_hidden_state()
+            image_sequences = Variable(y.to(device), requires_grad=True)
             predictions = model(image_sequences)
-            loss = cls_criterion(predictions, labels)
-            acc = 100 * (predictions.detach().argmax(1) == labels).cpu().numpy().mean()
-            loss.backward()
-            optimizer.step()
-            epoch_metrics["loss"].append(loss.item())
-            epoch_metrics["acc"].append(acc)
-            if(phase=='train'):
-                lr,mom = onecyc.calc()
-                update_lr(optimizer, lr)
-                update_mom(optimizer, mom)
-            batches_done = epoch * len(dataloaders[phase]) + batch_i
-            batches_left = num_epochs * len(dataloaders[phase]) - batches_done
-            sys.stdout.write(
-                    "\r[Epoch %d/%d] [Batch %d/%d] [Loss: %f (%f), Acc: %.2f%% (%.2f%%)]"
-                    % (
-                        epoch,
-                        num_epochs,
-                        batch_i,
-                        len(dataloaders[phase]),
-                        loss.item(),
-                        np.mean(epoch_metrics["loss"]),
-                        acc,
-                        np.mean(epoch_metrics["acc"]),
-                    )
-                )
-
-                # Empty cache
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
             
-        print('')
-        print('{} , acc: {}'.format(phase,np.mean(epoch_metrics["acc"])))
-        
